@@ -1,1 +1,0 @@
-chess game made by Eric, Kenzo
