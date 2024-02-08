@@ -2,14 +2,31 @@ from piece import Piece
 
 
 class Tile:
-    def __init__(self, piece: Piece, tile_position):
+    def __init__(self, piece: Piece, position):
         self.piece = piece
-        self.tile_position = tile_position
+        self.position = position
+        # Attacking[0] is white tiles that are attacking it, attacking[1] is black tiles
+        self.attacking = ([], [])
+
+    def has_piece(self):
+        return self.piece != None
+
+    def remove_piece(self):
+        self.piece = None
+
+    def set_piece(self, piece: Piece):
+        self.piece = piece
+
+    def get_piece(self):
+        return self.piece
+
+    def get_position(self):
+        return self.position
 
     def __str__(self):
-        row = self.tile_position[0] + 1
+        row = self.position[0] + 1
         # Convert int(0-7) to char(a-h)
-        col = chr(self.tile_position[1] + 97)
+        col = chr(self.position[1] + 97)
         if self.piece != None:
             color = "White" if self.piece.color == True else "Black"
             piece_type = self.piece.__class__.__name__

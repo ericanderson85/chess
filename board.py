@@ -10,41 +10,35 @@ from pieces.knight import Knight
 class Board:
     def __init__(self):
         self.tiles = []
+        # Mapping of column index to piece
+        piece_map = {
+            0: Rook,
+            1: Knight,
+            2: Bishop,
+            3: Queen,
+            4: King,
+            5: Bishop,
+            6: Knight,
+            7: Rook
+        }
+
         for row in range(8):
-            # Add a list representing a new row
             current_row = []
             for col in range(8):
-                piece = None  # Default empty
+                piece = None  # Default to no piece
 
-                # Initialize pawns
-                if row == 1:
-                    piece = Pawn(color=True, position=[row, col])
-                elif row == 6:
-                    piece = Pawn(color=False, position=[row, col])
+                # True for white (rows 0-1), False for black (rows 6-7)
+                color = row < 5
 
-                # Initialize other pieces on the 1st and 8th rows
-                if row in [0, 7]:
-                    color_bool = row == 0  # False for black, True for white
+                # Pawns
+                if row in [1, 6]:
+                    piece = Pawn(color=color, position=[row, col])
 
-                    if col in [0, 7]:
-                        piece = Rook(color=color_bool, position=[row, col])
+                # Other pieces
+                elif row in [0, 7] and col in piece_map:
+                    piece = piece_map[col](color=color, position=[row, col])
 
-                    elif col in [1, 6]:
-                        piece = Knight(color=color_bool, position=[row, col])
-
-                    elif col in [2, 5]:
-                        piece = Bishop(color=color_bool, position=[row, col])
-
-                    elif col == 3:
-                        # Queen on its color
-                        if (color and row == 7) or (not color and row == 0):
-                            piece = Queen(color=color_bool,
-                                          position=[row, col])
-
-                    elif col == 4:
-                        piece = King(color=color_bool, position=[row, col])
-
-                tile = Tile(piece=piece, tile_position=[row, col])
+                tile = Tile(piece=piece, position=[row, col])
                 current_row.append(tile)
             self.tiles.append(current_row)
 
@@ -52,53 +46,51 @@ class Board:
         string_representation_of_board = ""
         for row in range(1, 9):
             for tile in self.tiles[8 - row]:
-                string_representation_of_board += tile.__str__() + " "
+                string_representation_of_board += str(tile) + " "
             string_representation_of_board += "\n"
         return string_representation_of_board
 
     def get_tile(self, position):
         return self.tiles[position[0]][position[1]]
 
-    def has_piece(self, tile: Tile):
-        return tile.piece != None
-
-    def piece_color(self, tile: Tile):
-        if not self.has_piece(tile):
-            raise Exception("There is no piece at the tile")
-
-        # Returns the color of the piece at the tile (True = white, False = black)
-        return tile.piece.color
-
     def piece_type(self, tile: Tile):
-        return tile.piece.__class__.__name__
+        return tile.get_piece().__class__.__name__
 
-    def is_legal_move(self, tile: Tile, destination):
-        if 0 > destination[0] > 7 or 0 > destination[1] > 7:
+    def update_attacking(self, tile: Tile, destination: Tile):
+        pass
+
+    def is_legal_move(self, tile: Tile, destination: Tile):
+        destination_position = destination.get_position()
+
+        # If the destination is outside of the board
+        if 0 > destination_position[0] > 7 or 0 > destination_position[1] > 7:
             raise Exception("Illegal destination")
+
         # If the piece can not move in that way
-        if not tile.piece.can_move(destination):
+        if not tile.piece.can_move(destination_position):
             return False
-        destination_tile = self.get_tile(destination)
+
         # If there is a piece at destination and it is the same color as the piece being moved
-        if self.has_piece(destination_tile) and self.piece_color(destination_tile) == tile.piece.color:
+        if destination.has_piece() and destination.get_piece().get_color() == tile.get_piece().get_color():
             return False
 
         # TODO Logic for checking if the move puts king in check
 
         return True
 
-    def move_piece(self, tile: Tile, destination):
-        if not self.has_piece(tile):
-            raise Exception(f"No piece at {tile.tile_position}")
+    def move_piece(self, tile: Tile, destination: Tile):
+        if not tile.has_piece():
+            raise Exception(f"No piece at {tile.get_position}")
+
         if not self.is_legal_move(tile, destination):
             raise Exception(f"Can't move to that destination")
+
         # Set destination tile to the piece being moved
-        self.get_tile(destination).piece = tile.piece
+        destination.set_piece(tile.piece)
+
         # Tile being moevd from to none
-        tile.piece = None
+        tile.remove_piece()
 
 
 board = Board()
-print(board)
-board.move_piece(board.get_tile([0, 1]), [2, 2])
 print(board)
