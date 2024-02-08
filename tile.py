@@ -12,10 +12,10 @@ class Tile:
         row = self.position[0] + 1
         col = chr(self.position[1] + 97)
         if self.piece != None:
-            color = self.piece.color
+            color = "White" if self.piece.color == True else "Black"
             piece_type = self.piece.__class__.__name__
         else:
             color = ''
             piece_type = ''
 
-        return f"{col}{row}  {color}{piece_type}".ljust(15)
+        return f"{col}{row}  {color} {piece_type}".ljust(16)
