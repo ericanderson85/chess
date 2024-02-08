@@ -14,8 +14,6 @@ class Board:
             # Add a list representing a new row
             current_row = []
             for col in range(8):
-                # Determine if the tile is white or black
-                color = (row + col) % 2 == 0
                 piece = None  # Default empty
 
                 # Initialize pawns
@@ -27,21 +25,26 @@ class Board:
                 # Initialize other pieces on the 1st and 8th rows
                 if row in [0, 7]:
                     color_bool = row == 0  # False for black, True for white
+
                     if col in [0, 7]:
                         piece = Rook(color=color_bool, position=[row, col])
+
                     elif col in [1, 6]:
                         piece = Knight(color=color_bool, position=[row, col])
+
                     elif col in [2, 5]:
                         piece = Bishop(color=color_bool, position=[row, col])
+
                     elif col == 3:
                         # Queen on its color
                         if (color and row == 7) or (not color and row == 0):
                             piece = Queen(color=color_bool,
                                           position=[row, col])
+
                     elif col == 4:
                         piece = King(color=color_bool, position=[row, col])
 
-                tile = Tile(color=color, piece=piece, position=[row, col])
+                tile = Tile(piece=piece, tile_position=[row, col])
                 current_row.append(tile)
             self.tiles.append(current_row)
 
@@ -69,7 +72,7 @@ class Board:
     def piece_type(self, tile: Tile):
         return tile.piece.__class__.__name__
 
-    def can_move(self, tile: Tile, destination):
+    def is_legal_move(self, tile: Tile, destination):
         if 0 > destination[0] > 7 or 0 > destination[1] > 7:
             raise Exception("Illegal destination")
         # If the piece can not move in that way
@@ -86,8 +89,8 @@ class Board:
 
     def move_piece(self, tile: Tile, destination):
         if not self.has_piece(tile):
-            raise Exception(f"No piece at {tile.position}")
-        if not self.can_move(tile, destination):
+            raise Exception(f"No piece at {tile.tile_position}")
+        if not self.is_legal_move(tile, destination):
             raise Exception(f"Can't move to that destination")
         # Set destination tile to the piece being moved
         self.get_tile(destination).piece = tile.piece
