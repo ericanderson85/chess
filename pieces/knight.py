@@ -3,7 +3,21 @@ from piece import Piece
 
 class Knight(Piece):
     def can_move(self, new_position):
-        # Knight moves in L shape, either change in x = 1 and change in y = 2 or vice versa
-        dx = abs(new_position[0] - self.position[0])
-        dy = abs(new_position[1] - self.position[1])
-        return (dx == 2 and dy == 1) or (dx == 1 and dy == 2)
+        return new_position in self.possible_moves()
+
+    def possible_moves(self):
+        row, col = self.position
+
+        # Potential moves in L-shapes
+        moves = [
+            (row + 2, col + 1), (row + 2, col - 1),
+            (row - 2, col + 1), (row - 2, col - 1),
+            (row + 1, col + 2), (row + 1, col - 2),
+            (row - 1, col + 2), (row - 1, col - 2)
+        ]
+
+        # Remove moves out of bounds
+        moves = [move for move in moves if 0 <=
+                 move[0] <= 7 and 0 <= move[1] <= 7]
+
+        return moves

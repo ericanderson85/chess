@@ -23,3 +23,7 @@ class Piece(ABC):
     @abstractmethod
     def can_move(self, new_position):
         pass
+
+    @abstractmethod
+    def possible_moves(self):
+        pass
