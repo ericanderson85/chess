@@ -20,6 +20,9 @@ class Piece(ABC):
 
         self.position = position
 
+    def get_type(self):
+        return self.__class__.__name__
+
     @abstractmethod
     def can_move(self, new_position):
         pass
