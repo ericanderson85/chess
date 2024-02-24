@@ -1,0 +1,14 @@
+out/
+.idea/
+.idea_modules/
+*.iml
+*.ipr
+*.iws
+.mtj.tmp/
+*.class
+*.jar
+*.war
+*.ear
+*.nar
+hs_err_pid*
+replay_pid*
