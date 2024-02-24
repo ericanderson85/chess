@@ -211,6 +211,7 @@ public class Board {
         return copy;
     }
     
+    // To do : make this look good
     @Override
     public String toString() {
         StringBuilder boardString = new StringBuilder();

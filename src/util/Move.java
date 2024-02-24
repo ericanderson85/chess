@@ -11,10 +11,10 @@ public record Move(Position startPosition, Position endPosition, ChessPiece move
         NONE, CHECK, STALEMATE, CHECKMATE
     }
     
-    // To do: logic to annotate
+    // To do : Chess annotation of move
     @Override
     public String toString() {
-        StringBuilder notation = new StringBuilder();
-        return notation.toString();
+        StringBuilder str = new StringBuilder();
+        return str.toString();
     }
 }
