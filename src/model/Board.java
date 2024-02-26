@@ -7,44 +7,56 @@ import util.Position;
 import java.util.*;
 
 public class Board {
-    private final ChessPiece[][] board; // 8x8 ChessPiece matrix - null if there is no piece there
-    private final Map<Position, ChessPiece> whitePieces; // Pieces white currently has
+    private final ChessPiece[][] board; // Contains null for empty pieces
+    private final Map<Position, ChessPiece> whitePieces;
     private final List<ChessPiece> whiteCaptured; // Black pieces which white has captured
-    private final Map<Position, ChessPiece> blackPieces; // Pieces black currently has
+    private final Map<Position, ChessPiece> blackPieces;
     private final List<ChessPiece> blackCaptured; // White pieces which black has captured
     private int score; // Total piece value ( Positive if white is winning, negative if black is )
     
     public Board() {
-        this.board = new ChessPiece[8][8];  // Instantiate board
+        this.board = new ChessPiece[8][8];
         this.whitePieces = new HashMap<>();
         this.blackPieces = new HashMap<>();
-        // Add pieces to board and maps
         for (int row = 0; row < 8; row++) {
-            for (int col = 0; col < 8; col++) createPiece(new Position(row, col));
+            for (int col = 0; col < 8; col++) {
+                addPiece(new Position(row, col));
+            }
         }
         this.whiteCaptured = new ArrayList<>();
         this.blackCaptured = new ArrayList<>();
-        this.score = 0;  // Score starts even
+        this.score = 0;
     }
     
-    private void createPiece(Position position) {
-        boolean isWhite = position.row() <= 1;  // Piece is white on rows 0, 1
-        ChessPiece piece = switch (position.row()) {
-            case 0, 7 -> switch (position.col()) {
-                case 0, 7 -> new Rook(position, isWhite);
-                case 1, 6 -> new Knight(position, isWhite);
-                case 2, 5 -> new Bishop(position, isWhite);
-                case 3 -> new Queen(position, true);
-                default -> new King(position, true);
-            };
-            case 1, 6 -> new Pawn(position, isWhite);
-            default -> null;  // No piece on rows 2 - 5
-        };
+    private void addPiece(Position position) {
+        boolean isWhite = position.row() <= 1;
+        ChessPiece piece = createPiece(position, isWhite);
         board[position.row()][position.col()] = piece;  // Add piece to the board
-        if (piece != null) {  // Map piece if not null
-            if (isWhite) whitePieces.put(position, piece);
-            else blackPieces.put(position, piece);
+        if (piece == null) {
+            return;
         }
+        if (isWhite) {
+            whitePieces.put(position, piece);
+        } else {
+            blackPieces.put(position, piece);
+        }
+    }
+    
+    public ChessPiece createPiece(Position position, boolean isWhite) {
+        if (position.row() < 6 && position.row() > 1) {
+            return null;
+        }
+        if (position.row() == 0 || position.row() == 7) {
+            return new Pawn(position, isWhite);
+        }
+        return switch (position.col()) {
+            case 0, 7 -> new Rook(position, isWhite);
+            case 1, 6 -> new Knight(position, isWhite);
+            case 2, 5 -> new Bishop(position, isWhite);
+            case 3 -> new Queen(position, isWhite);
+            case 4 -> new King(position, isWhite);
+            default -> throw new IllegalArgumentException("Illegal column");
+        };
     }
     
     public ChessPiece getPiece(Position position) {
@@ -84,13 +96,15 @@ public class Board {
     }
     
     private void validateMove(ChessPiece thisPiece, Position position, Position destination) throws IllegalMoveException {
-        if (!thisPiece.canMove(position)) throw new IllegalMoveException("Piece can not move in this way");
+        if (!thisPiece.canMove(position))
+            throw new IllegalMoveException("Piece can not move in this way");
         if (thisPiece instanceof Knight) return;  // Knights don't have to worry about collisions
         int dy = position.row() - destination.row();
         int dx = position.col() - destination.col();
         for (int i = position.row(), j = position.col(); i != destination.row() || j != destination.col();
              i += Integer.compare(dy, 0), j += Integer.compare(dx, 0)) {  // Go towards destination one tile at a time
-            if (getPiece(new Position(i, j)) != null) throw new IllegalMoveException("A piece is in the way");
+            if (getPiece(new Position(i, j)) != null)
+                throw new IllegalMoveException("A piece is in the way");
         }
     }
     
@@ -117,7 +131,8 @@ public class Board {
         return Move.CheckType.NONE;  // Placeholder
     }
     
-    private void performMove(ChessPiece thisPiece, Position position, ChessPiece otherPiece, Position destination, boolean castling) throws IllegalMoveException {
+    private void performMove(ChessPiece thisPiece, Position position, ChessPiece otherPiece,
+                             Position destination, boolean castling) throws IllegalMoveException {
         if (castling == true) performCastle(thisPiece, position, otherPiece, destination);
         else if (otherPiece != null) performCapture(thisPiece, position, otherPiece, destination);
         else performSwap(thisPiece, position, destination);
