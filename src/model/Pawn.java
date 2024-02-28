@@ -12,7 +12,41 @@ public class Pawn extends ChessPiece {
     
     @Override
     public boolean canMove(Position destination) {
-        return false;
+        int dy = destination.row() - position.row();
+        int dx = destination.col() - position.col();
+        if (Math.abs(dy) > 2 || Math.abs(dx) > 1) {
+            return false;
+        }
+        if (isWhite) {
+            return canMoveWhite(destination, dy, dx);
+        }
+        return canMoveBlack(destination, dy, dx);
+    }
+    
+    private boolean canMoveWhite(Position destination, int dy, int dx) {
+        if (dy < 1) {
+            return false;
+        }
+        if (dy == 2) {
+            if (position.row() != 1) {
+                return false;
+            }
+            return dx == 0;
+        }
+        return true;
+    }
+    
+    private boolean canMoveBlack(Position destination, int dy, int dx) {
+        if (dy > -1) {
+            return false;
+        }
+        if (dy == -2) {
+            if (position.row() != 6) {
+                return false;
+            }
+            return dx == 0;
+        }
+        return true;
     }
     
     @Override

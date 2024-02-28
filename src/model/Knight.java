@@ -13,7 +13,9 @@ public class Knight extends ChessPiece {
     
     @Override
     public boolean canMove(Position destination) {
-        return false;
+        int dy = destination.row() - position.row();
+        int dx = destination.col() - position.col();
+        return ((Math.abs(dy) == 2 && Math.abs(dx) == 1) || (Math.abs(dy) == 1 && Math.abs(dx) == 2));
     }
     
     @Override

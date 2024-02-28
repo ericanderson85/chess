@@ -12,7 +12,9 @@ public class Bishop extends ChessPiece {
     
     @Override
     public boolean canMove(Position destination) {
-        return false;
+        int dy = destination.row() - position.row();
+        int dx = destination.col() - position.col();
+        return Math.abs(dy) == Math.abs(dx);
     }
     
     @Override

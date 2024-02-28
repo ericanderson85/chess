@@ -12,7 +12,10 @@ public class Queen extends ChessPiece{
     
     @Override
     public boolean canMove(Position destination) {
-        return false;
+        int dy = destination.row() - position.row();
+        int dx = destination.col() - position.col();
+        // The case for the destination being the same as the position is already handled
+        return dx == 0 || dy == 0 || Math.abs(dx) == Math.abs(dy);
     }
     
     @Override
