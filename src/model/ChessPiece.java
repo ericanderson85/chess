@@ -32,6 +32,5 @@ public abstract class ChessPiece {
     
     public abstract boolean canMove(Position destination);
     
-    public abstract List<Move> possibleMoves(Position pos);
-    
+    public abstract List<Position> possibleMoves();
 }

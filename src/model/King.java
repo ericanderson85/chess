@@ -7,9 +7,11 @@ import java.util.List;
 
 public class King extends ChessPiece{
     private boolean hasMoved;
+    private boolean inCheck;
     public King(Position position, boolean isWhite) {
         super(position, isWhite, 1);
         this.hasMoved = false;
+        this.inCheck = false;
     }
     
     @Override
@@ -45,8 +47,26 @@ public class King extends ChessPiece{
         return hasMoved;
     }
     
+    public void setHasMoved() {
+        this.hasMoved = true;
+    }
+    
     @Override
-    public List<Move> possibleMoves(Position pos) {
-        return null;
+    public List<Position> possibleMoves() {
+        return List.of(
+                new Position(position.row() + 1, position.col() + 1),
+                new Position(position.row() + 1, position.col()),
+                new Position(position.row() + 1, position.col() - 1),
+                new Position(position.row(), position.col() + 1),
+                new Position(position.row(), position.col() - 1),
+                new Position(position.row() - 1, position.col() + 1),
+                new Position(position.row() - 1, position.col()),
+                new Position(position.row() - 1, position.col() - 1)
+                );
+    }
+    
+    @Override
+    public String toString() {
+        return "K" + (isWhite ? "w" : "b");
     }
 }

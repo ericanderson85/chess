@@ -14,12 +14,16 @@ public class Queen extends ChessPiece{
     public boolean canMove(Position destination) {
         int dy = destination.row() - position.row();
         int dx = destination.col() - position.col();
-        // The case for the destination being the same as the position is already handled
         return dx == 0 || dy == 0 || Math.abs(dx) == Math.abs(dy);
     }
     
     @Override
-    public List<Move> possibleMoves(Position pos) {
+    public List<Position> possibleMoves() {
         return null;
+    }
+    
+    @Override
+    public String toString() {
+        return "Q" + (isWhite ? "w" : "b");
     }
 }

@@ -18,7 +18,12 @@ public class Bishop extends ChessPiece {
     }
     
     @Override
-    public List<Move> possibleMoves(Position pos) {
+    public List<Position> possibleMoves() {
         return null;
+    }
+    
+    @Override
+    public String toString() {
+        return "B" + (isWhite ? "w" : "b");
     }
 }

@@ -5,10 +5,12 @@ import util.Position;
 
 import java.util.List;
 
-public class Rook extends ChessPiece{
+public class Rook extends ChessPiece {
+    boolean hasMoved;
     
     public Rook(Position position, boolean isWhite) {
         super(position, isWhite, 5);
+        this.hasMoved = false;
     }
     
     @Override
@@ -19,8 +21,21 @@ public class Rook extends ChessPiece{
         return dx == 0 || dy == 0;
     }
     
+    public boolean hasMoved() {
+        return hasMoved;
+    }
+    
+    public void setHasMoved() {
+        this.hasMoved = true;
+    }
+    
     @Override
-    public List<Move> possibleMoves(Position pos) {
+    public List<Position> possibleMoves() {
         return null;
+    }
+    
+    @Override
+    public String toString() {
+        return "R" + (isWhite ? "w" : "b");
     }
 }

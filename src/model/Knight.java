@@ -19,7 +19,12 @@ public class Knight extends ChessPiece {
     }
     
     @Override
-    public List<Move> possibleMoves(Position pos) {
+    public List<Position> possibleMoves() {
         return null;
+    }
+    
+    @Override
+    public String toString() {
+        return "N" + (isWhite ? "w" : "b");
     }
 }

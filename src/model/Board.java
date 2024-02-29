@@ -12,6 +12,7 @@ public class Board {
     private final List<ChessPiece> whiteCaptured; // Black pieces which white has captured
     private final Map<Position, ChessPiece> blackPieces;
     private final List<ChessPiece> blackCaptured; // White pieces which black has captured
+    private Pawn doubleStep;  // Reference to a pawn that just moved twice
     private int score; // Total piece value ( Positive if white is winning, negative if black is )
     
     public Board() {
@@ -25,6 +26,7 @@ public class Board {
         }
         this.whiteCaptured = new ArrayList<>();
         this.blackCaptured = new ArrayList<>();
+        this.doubleStep = null;
         this.score = 0;
     }
     
@@ -42,11 +44,11 @@ public class Board {
         }
     }
     
-    public ChessPiece createPiece(Position position, boolean isWhite) {
+    private ChessPiece createPiece(Position position, boolean isWhite) {
         if (position.row() < 6 && position.row() > 1) {
             return null;
         }
-        if (position.row() == 0 || position.row() == 7) {
+        if (position.row() == 1 || position.row() == 6) {
             return new Pawn(position, isWhite);
         }
         return switch (position.col()) {
@@ -63,28 +65,47 @@ public class Board {
         return board[position.row()][position.col()];
     }
     
+    private void removePiece(Position position) {
+        board[position.row()][position.col()] = null;
+    }
+    private void setPiece(ChessPiece piece, Position position) {
+        board[position.row()][position.col()] = piece;
+        piece.setPosition(position);
+    }
+    
+    
     // Moves piece and returns the move
     public Move movePiece(Position position, Position destination, boolean isWhiteTurn) throws IllegalMoveException {
-        ChessPiece thisPiece = movingPiece(position, isWhiteTurn);  // Handles empty position
-        validateMove(thisPiece, position, destination);  // Checks if the piece is able to move in that way and there are no pieces blocking it
+        ChessPiece thisPiece = getMovingPiece(position, isWhiteTurn);  // Handles empty position
+        if (!isValidMove(thisPiece, position, destination)) {
+            throw new IllegalMoveException("Invalid move");
+        }
         ChessPiece otherPiece = getPiece(destination);  // Piece being captured or null
-        Move.MoveType moveType = moveType(thisPiece, otherPiece);  // Handles capture of same color
-        boolean castling = moveType == Move.MoveType.CASTLE;
-        Move.CheckType checkType = checkType(thisPiece, otherPiece);  // NONE, CHECK, CHECKMATE
+        Move.MoveType moveType = determineMoveType(thisPiece, position, otherPiece, destination);  // Handles capture of same color
+        Move.CheckType checkType = determineCheckType(thisPiece, otherPiece);  // NONE, CHECK, CHECKMATE
         
         try {
-            performMove(thisPiece, position, otherPiece, destination, castling);  // Handles own king in check
+            performMove(thisPiece, position, otherPiece, destination, moveType);  // Handles own king in check
         } catch (IllegalMoveException e) {
-            if (castling) undoCastle();
-            else if (otherPiece == null) undoSwap(thisPiece, position, destination);
-            else undoCapture(thisPiece, position, otherPiece, destination);
+            undoMove(thisPiece, position, otherPiece, destination, moveType);
             throw new IllegalMoveException("Move puts own king in check");
+        }
+        
+        if (thisPiece instanceof Pawn) {
+            this.doubleStep = (Pawn)thisPiece;
+        } else {
+            this.doubleStep = null;
+            if (thisPiece instanceof King) {
+                ((King) thisPiece).setHasMoved();
+            } else if (thisPiece instanceof Rook) {
+                ((Rook) thisPiece).setHasMoved();
+            }
         }
         
         return new Move(position, destination, thisPiece, otherPiece, moveType, checkType);
     }
     
-    private ChessPiece movingPiece(Position position, boolean isWhiteTurn) throws IllegalMoveException {
+    private ChessPiece getMovingPiece(Position position, boolean isWhiteTurn) throws IllegalMoveException {
         ChessPiece thisPiece = getPiece(position);
         if (thisPiece == null) {
             throw new IllegalMoveException("No piece to be moved");
@@ -95,113 +116,304 @@ public class Board {
         return thisPiece;
     }
     
-    private void validateMove(ChessPiece thisPiece, Position position, Position destination) throws IllegalMoveException {
-        if (!thisPiece.canMove(position))
-            throw new IllegalMoveException("Piece can not move in this way");
-        if (thisPiece instanceof Knight) return;  // Knights don't have to worry about collisions
-        int dy = position.row() - destination.row();
-        int dx = position.col() - destination.col();
-        for (int i = position.row(), j = position.col(); i != destination.row() || j != destination.col();
-             i += Integer.compare(dy, 0), j += Integer.compare(dx, 0)) {  // Go towards destination one tile at a time
-            if (getPiece(new Position(i, j)) != null)
-                throw new IllegalMoveException("A piece is in the way");
+    private boolean isValidMove(ChessPiece thisPiece, Position position, Position destination) {
+        if (!isInBounds(destination)) {
+            return false;
         }
+        if (position.equals(destination)) {
+            return false;
+        }
+        if (!thisPiece.canMove(destination)) {
+            return false;
+        }
+        if (thisPiece instanceof Pawn && destination.col() == position.col() && getPiece(destination) != null) {
+            return false;
+        }
+        return canSee(thisPiece, position, destination);
     }
     
-    private ChessPiece capturedPiece(ChessPiece thisPiece, Position destination, boolean isWhiteTurn) throws IllegalMoveException {
-        ChessPiece otherPiece = getPiece(destination);
-        if (otherPiece != null && otherPiece.isWhite() == isWhiteTurn) {
-            throw new IllegalMoveException("Capturing same color piece");
-        }
-        return otherPiece;
+    private boolean isInBounds(Position position) {
+        return (position.row() <= 7 && position.row() >= 0 && position.col() <= 7 && position.col() >= 0);
     }
     
-    private Move.MoveType moveType(ChessPiece thisPiece, ChessPiece otherPiece) {
-        
+    private Move.MoveType determineMoveType(ChessPiece thisPiece, Position position, ChessPiece otherPiece, Position destination) throws IllegalMoveException {
+        boolean isCastling = false;
         if (thisPiece instanceof Pawn) {
-            // Logic to check if the pawn is promoting, doing en passant, or neither
-        } else if (thisPiece instanceof King || thisPiece instanceof Rook) {
-            // Logic to check if the piece is castling
+            if (isEnPassant(thisPiece, position, otherPiece, destination)) {
+                return Move.MoveType.EN_PASSANT;
+            }
+            if ((thisPiece.isWhite() && destination.row() == 7)  ||
+                    (!thisPiece.isWhite() && destination.row() == 0)) {
+                return Move.MoveType.PROMOTION;
+            }
+            
+        } else if (thisPiece instanceof King && otherPiece instanceof Rook) {
+            if (((King) thisPiece).hasMoved() && ((Rook) otherPiece).hasMoved()) {
+                isCastling = true;
+            }
+        } else if (thisPiece instanceof Rook && otherPiece instanceof King) {
+            if (((Rook) thisPiece).hasMoved() && ((King) otherPiece).hasMoved()) {
+                isCastling = true;
+            }
         }
         
-        return Move.MoveType.NORMAL;  // Placeholder
+        if (otherPiece != null && !isCastling && (thisPiece.isWhite() == otherPiece.isWhite())) {
+            throw new IllegalMoveException("Capturing piece of same color");
+        }
+        
+        if (isCastling) {
+            int dx = destination.col() - position.col();
+            for (int i = 1; i < Math.abs(dx); i+=Integer.compare(0, dx)) {
+                Position pos = new Position(position.row(), position.col() + i);
+                if (getPiece(pos) != null) {
+                    throw new IllegalMoveException("Can't castle, pieces in the way");
+                }
+                if (isAttacked(!thisPiece.isWhite(), pos)) {
+                    throw new IllegalMoveException("Can't castle through check");
+                }
+            }
+            return Move.MoveType.CASTLE;
+        }
+        
+        return Move.MoveType.NORMAL;
     }
     
-    private Move.CheckType checkType(ChessPiece thisPiece, ChessPiece otherPiece) {
-        return Move.CheckType.NONE;  // Placeholder
+    private boolean isEnPassant(ChessPiece thisPiece, Position position, ChessPiece otherPiece, Position destination) {
+        if (doubleStep == null) {
+            return false;
+        }
+        if (getPiece(new Position(position.row(), position.col() + 1)) == doubleStep) {
+            return destination.col() == position.col() + 1;
+        }
+        else if (getPiece(new Position(position.row(), position.col() - 1)) == doubleStep) {
+            return destination.col() == position.col() - 1;
+        }
+        return false;
     }
+    
+    private Move.CheckType determineCheckType(ChessPiece thisPiece, ChessPiece otherPiece) {
+        Position otherKingPos = findKingPos(!thisPiece.isWhite());
+        if (isAttacked(thisPiece.isWhite(), otherKingPos)) {
+            if (hasNoMoves(otherKingPos)) {
+                return Move.CheckType.CHECKMATE;
+            }
+            return Move.CheckType.CHECK;
+        }
+        return Move.CheckType.NONE;
+    }
+    
+
     
     private void performMove(ChessPiece thisPiece, Position position, ChessPiece otherPiece,
-                             Position destination, boolean castling) throws IllegalMoveException {
-        if (castling == true) performCastle(thisPiece, position, otherPiece, destination);
-        else if (otherPiece != null) performCapture(thisPiece, position, otherPiece, destination);
-        else performSwap(thisPiece, position, destination);
+                             Position destination, Move.MoveType moveType) throws IllegalMoveException {
+        if (moveType == Move.MoveType.CASTLE) {
+            performCastle(thisPiece, position, otherPiece, destination);
+        }
+        else if (moveType == Move.MoveType.EN_PASSANT) {
+            performEnPassant(thisPiece, position, otherPiece, destination);
+        }
+        else if (otherPiece != null) {
+            capturePiece(otherPiece);
+            movePiece(thisPiece, position, destination);
+        }
+        else {
+            movePiece(thisPiece, position, destination);
+        }
         
-        // Check if move puts own king in check
-        if (false) {
+        Position kingPos = findKingPos(thisPiece.isWhite());
+        
+        if (isAttacked(!thisPiece.isWhite(), kingPos)) {
             throw new IllegalMoveException("Move puts own king in check");
         }
     }
     
-    private void performCastle(ChessPiece thisPiece, Position position, ChessPiece otherPiece, Position destination) {
-        // Logic to perform castle
-    }
-    
-    private void performCapture(ChessPiece thisPiece, Position position, ChessPiece otherPiece, Position destination) {
-        performSwap(thisPiece, position, destination);
-        if (thisPiece.isWhite()) {
-            whiteCaptured.add(otherPiece);  // Add otherPiece to whiteCaptured
-            blackPieces.remove(destination);  // Remove otherPiece from blackPieces
-            score += otherPiece.getValue();  // Add value
-        } else {
-            blackCaptured.add(otherPiece);
-            whitePieces.remove(destination);
-            score -= otherPiece.getValue();  // Subtract value
-        }
-    }
-    
-    private void performSwap(ChessPiece thisPiece, Position position, Position destination) {
-        if (thisPiece.isWhite()) {
-            whitePieces.remove(position);  // Remove thisPiece from old destination
-            whitePieces.put(destination, thisPiece);  // Put thisPiece in new destination
+    private void capturePiece(ChessPiece piece) {
+        Position position = piece.getPosition();
+        removePiece(position);
+        if (piece.isWhite()) {
+            whitePieces.remove(position);
+            blackCaptured.add(piece);
+            score -= piece.getValue();
         } else {
             blackPieces.remove(position);
-            blackPieces.put(destination, thisPiece);
+            whiteCaptured.add(piece);
+            score += piece.getValue();
         }
-        thisPiece.setPosition(destination);  // Set thisPiece's position
-        board[position.row()][position.col()] = null;  // Old position is empty
-        board[destination.row()][destination.col()] = thisPiece;  // Set position on board
     }
     
-    private void undoCastle() {
-        // Logic to undo castle
-    }
-    
-    private void undoCapture(ChessPiece thisPiece, Position position, ChessPiece otherPiece, Position destination) {
-        undoSwap(thisPiece, position, destination);
-        if (thisPiece.isWhite()) {
-            blackPieces.put(destination, otherPiece);  // Put otherPiece back
-            whiteCaptured.remove(otherPiece);  // Remove otherPiece from captured
-            score -= otherPiece.getValue();  // Revert score
+    private void movePiece(ChessPiece piece, Position position, Position destination) {
+        if (getPiece(destination) != null) {
+            throw new IllegalArgumentException("There is a piece there");
+        }
+        removePiece(position);
+        setPiece(piece, destination);
+        if (piece.isWhite()) {
+            whitePieces.remove(position);
+            whitePieces.put(destination, piece);
         } else {
-            whitePieces.put(destination, otherPiece);
-            blackCaptured.remove(otherPiece);
-            score += otherPiece.getValue();
+            blackPieces.remove(position);
+            blackPieces.put(destination, piece);
         }
-        board[destination.row()][destination.col()] = otherPiece;  // Put otherPiece back on board
     }
     
-    private void undoSwap(ChessPiece thisPiece, Position position, Position destination) {
-        if (thisPiece.isWhite()) {
-            whitePieces.remove(destination);  // Remove thisPiece from destination
-            whitePieces.put(position, thisPiece);  // Put otherPiece in original position
+    private void undoMove(ChessPiece piece, Position position, Position destination) {
+        movePiece(piece, destination, position);
+    }
+    
+    private void undoCapture(ChessPiece piece, Position position) {
+        setPiece(piece, position);
+        if (piece.isWhite()) {
+            whitePieces.put(position, piece);
+            blackCaptured.remove(piece);
+            score += piece.getValue();
         } else {
-            blackPieces.remove(destination);
-            blackPieces.put(position, thisPiece);
+            blackPieces.put(position, piece);
+            whiteCaptured.remove(piece);
+            score -= piece.getValue();
         }
-        thisPiece.setPosition(position);  // Revert thisPiece's position
-        board[position.row()][position.col()] = thisPiece;  // Revert position on board
-        board[destination.row()][destination.col()] = null;  // Destination now empty
+    }
+    
+
+    
+    private void performCastle(ChessPiece thisPiece, Position position, ChessPiece otherPiece, Position destination) {
+        if (thisPiece instanceof King) {
+            if (destination.col() == 0) {
+                performQueenSideCastle(thisPiece, position, otherPiece, destination);
+            } else {
+                performKingSideCastle(thisPiece, position, otherPiece, destination);
+            }
+        } else {
+            if (destination.col() == 0) {
+                performQueenSideCastle(otherPiece, destination, thisPiece, position);
+            } else {
+                performKingSideCastle(otherPiece, destination, thisPiece, position);
+            }
+        }
+
+    }
+    
+    private void undoCastle(ChessPiece thisPiece, Position position, ChessPiece otherPiece, Position destination) {
+        if (thisPiece instanceof King) {
+            if (destination.col() == 0) {
+                undoQueenSideCastle(thisPiece, position, otherPiece, destination);
+            } else {
+                undoKingSideCastle(thisPiece, position, otherPiece, destination);
+            }
+        } else {
+            if (destination.col() == 0) {
+                undoQueenSideCastle(otherPiece, destination, thisPiece, position);
+            } else {
+                undoKingSideCastle(otherPiece, destination, thisPiece, position);
+            }
+        }
+    }
+    
+    private void performQueenSideCastle(ChessPiece king, Position kingPosition, ChessPiece rook, Position rookPosition) {
+        if (king.isWhite()) {
+            movePiece(king, kingPosition, new Position(0, 2));
+            movePiece(rook, rookPosition, new Position(0, 3));
+        } else {
+            movePiece(king, kingPosition, new Position(7, 2));
+            movePiece(rook, rookPosition, new Position(7, 3));
+        }
+    }
+    
+    private void undoQueenSideCastle(ChessPiece king, Position kingPosition, ChessPiece rook, Position rookPosition) {
+        if (king.isWhite()) {
+            undoMove(king, kingPosition, new Position(0, 2));
+            undoMove(rook, rookPosition, new Position(0, 3));
+        } else {
+            undoMove(king, kingPosition, new Position(7, 2));
+            undoMove(rook, rookPosition, new Position(7, 3));
+        }
+    }
+    
+    
+    private void performKingSideCastle(ChessPiece king, Position kingPosition, ChessPiece rook, Position rookPosition) {
+        if (king.isWhite()) {
+            movePiece(king, kingPosition, new Position(0, 6));
+            movePiece(rook, rookPosition, new Position(0, 5));
+        } else {
+            movePiece(king, kingPosition, new Position(7, 6));
+            movePiece(rook, rookPosition, new Position(7, 5));
+        }
+    }
+    
+    private void undoKingSideCastle(ChessPiece king, Position kingPosition, ChessPiece rook, Position rookPosition) {
+        if (king.isWhite()) {
+            undoMove(king, kingPosition, new Position(0, 6));
+            undoMove(rook, rookPosition, new Position(0, 5));
+        } else {
+            undoMove(king, kingPosition, new Position(7, 6));
+            undoMove(rook, rookPosition, new Position(7, 5));
+        }
+    }
+    
+    private void performEnPassant(ChessPiece thisPiece, Position position, ChessPiece otherPiece, Position destination) {
+        movePiece(thisPiece, position, destination);
+        capturePiece(otherPiece);
+    }
+    
+    private void undoEnPassant(ChessPiece thisPiece, Position position, ChessPiece otherPiece, Position destination) {
+        undoMove(thisPiece, position, destination);
+        undoCapture(otherPiece, otherPiece.getPosition());
+    }
+    
+    private void undoMove(ChessPiece thisPiece, Position position, ChessPiece otherPiece, Position destination, Move.MoveType moveType) {
+        if (moveType == Move.MoveType.CASTLE) {
+            undoCastle(thisPiece, position, otherPiece, destination);
+        }
+        if (moveType == Move.MoveType.EN_PASSANT) {
+            undoEnPassant(thisPiece, position, otherPiece, destination);
+        }
+        else {
+            undoMove(thisPiece, position, destination);
+            if (otherPiece != null) {
+                undoCapture(otherPiece, destination);
+            }
+        }
+    }
+    
+    private Position findKingPos(boolean isWhite) {
+        for (Position pos : isWhite ? whitePieces.keySet() : blackPieces.keySet()) {
+            if (getPiece(pos) instanceof King) {
+                return pos;
+            }
+        }
+        return null;
+    }
+
+    private boolean isAttacked(boolean byWhiteTeam, Position position) {
+        for (Position pos : byWhiteTeam ? whitePieces.keySet() : blackPieces.keySet()) {
+            if (getPiece(pos).canMove(position) && canSee(getPiece(pos), pos, position)) {
+                return true;
+            }
+        }
+        return false;
+    }
+    
+    private boolean canSee(ChessPiece piece, Position position, Position destination) {
+        if (piece instanceof Knight || piece instanceof Pawn || piece instanceof King) return true;
+        int dy = destination.row() - position.row();
+        int dx = destination.col() - position.col();
+        int dirY = Integer.compare(dy, 0);
+        int dirX = Integer.compare(dx, 0);
+        for (int i = position.row() + dirY, j = position.col() + dirX; i != destination.row() || j != destination.col();
+             i += dirY, j += dirX) {  // Go towards destination one tile at a time
+            if (getPiece(new Position(i, j)) != null)
+                return false;
+        }
+        return true;
+    }
+    
+    private boolean hasNoMoves(Position position) {
+        King king = (King)getPiece(position);
+        for (Position pos : king.possibleMoves()) {
+            if (!isAttacked(!king.isWhite, pos)) {
+                return false;
+            }
+        }
+        return true;
     }
     
     
@@ -226,17 +438,26 @@ public class Board {
         return copy;
     }
     
-    // To do : make this look good
     @Override
     public String toString() {
         StringBuilder boardString = new StringBuilder();
-        for (int i = 0; i < 8; i++) boardString.append(Arrays.toString(board[i])).append("\n");
+        for (int i = 0; i < 8; i++) {
+            for (int j = 0; j < 8; j++) {
+                System.out.print(board[i][j] == null ? "    " : " " + board[i][j].toString() + " ");
+            }
+            System.out.println();
+        }
         return boardString.toString();
     }
     
     public static void main(String[] args) throws IllegalMoveException {
         Board b = new Board();
-        b.movePiece(new Position(1, 4), new Position(3, 4), true);
+        b.movePiece(new Position(1, 5), new Position(3, 5), true);
+        b.movePiece(new Position(6, 4), new Position(5, 4), false);
+        b.movePiece(new Position(1, 6), new Position(3, 6), true);
+        b.movePiece(new Position(7, 3), new Position(3, 7), false);
+        System.out.println(b.getPiece(new Position(7, 3)));
         System.out.println(b);
+    
     }
 }
