@@ -1,13 +1,11 @@
 package model;
 
-import util.Move;
 import util.Position;
 
 import java.util.List;
 
 public class Rook extends ChessPiece {
-    boolean hasMoved;
-    
+    private boolean hasMoved;
     public Rook(Position position, boolean isWhite) {
         super(position, isWhite, 5);
         this.hasMoved = false;
@@ -25,8 +23,8 @@ public class Rook extends ChessPiece {
         return hasMoved;
     }
     
-    public void setHasMoved() {
-        this.hasMoved = true;
+    public void setMoved() {
+        this.hasMoved = false;
     }
     
     @Override

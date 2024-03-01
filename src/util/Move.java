@@ -1,14 +1,13 @@
 package util;
 import model.ChessPiece;
 
-public record Move(Position startPosition, Position endPosition, ChessPiece movedPiece, ChessPiece capturedPiece,
-                   Move.MoveType moveType,  Move.CheckType checkType) {
+public record Move(Position position, ChessPiece movedPiece, Position destination, ChessPiece capturedPiece, Move.MoveType moveType, Move.PromotionType promotionType) {
     public enum MoveType {
         NORMAL, CASTLE, EN_PASSANT, PROMOTION
     }
     
-    public enum CheckType {
-        NONE, CHECK, STALEMATE, CHECKMATE
+    public enum PromotionType {
+        NONE, QUEEN, ROOK, KNIGHT, BISHOP
     }
     
     // To do : Chess annotation of move

@@ -1,11 +1,10 @@
 package model;
 
-import util.Move;
 import util.Position;
 
 import java.util.List;
 
-public class King extends ChessPiece{
+public class King extends ChessPiece {
     private boolean hasMoved;
     private boolean inCheck;
     public King(Position position, boolean isWhite) {
@@ -47,7 +46,7 @@ public class King extends ChessPiece{
         return hasMoved;
     }
     
-    public void setHasMoved() {
+    public void setMoved() {
         this.hasMoved = true;
     }
     

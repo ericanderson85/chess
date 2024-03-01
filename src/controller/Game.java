@@ -1,87 +1,105 @@
 package controller;
 
-import util.IllegalMoveException;
-import util.Move;
-import util.Position;
+import util.*;
 import model.*;
 
-import java.util.Arrays;
+import java.util.Scanner;
 import java.util.Stack;
 
 public class Game {
-    private final Board board;
-    private final Stack<ChessPiece[][]> boardHistory;
+    private Board currentBoard;
+    private final Stack<Board> boardHistory;
     private final Stack<Move> moveHistory;
     private boolean isWhiteTurn;
     private int fiftyMoveRuleCounter;
     private int whiteSecondsLeft;
     private int blackSecondsLeft;
+    private final MoveFactory moveFactory;
+    private final BoardFactory boardFactory;
+    private boolean gameOver;
+    
     
     public Game(int initialClock) {
-        this.board = new Board();
+        this.moveFactory = new MoveFactory();
+        this.boardFactory = new BoardFactory();
+        this.currentBoard = boardFactory.create();
         this.boardHistory = new Stack<>();
         this.moveHistory = new Stack<>();
         this.isWhiteTurn = true;
         this.fiftyMoveRuleCounter = 0;
         this.whiteSecondsLeft = initialClock;
         this.blackSecondsLeft = initialClock;
+        this.gameOver = false;
         startGame();
     }
     
     private void startGame() {
-        // Logic to start game
+        while (!gameOver) {
+            getMove();
+        }
     }
     
-    public void movePiece(Position position, Position destination) {
-        Move currentMove;
-        
+    private void getMove() {
+        System.out.println((isWhiteTurn ? "White's" : "Black's") + " move");
+        System.out.println(currentBoard);
+        Scanner reader = new Scanner(System.in);
+        System.out.println("Enter square to move:");
+        Position position = decodePosition(reader.next());
+        System.out.println("Enter destination:");
+        Position destination = decodePosition(reader.next());
         try {
-            currentMove = board.movePiece(position, destination, isWhiteTurn);
+            movePiece(position, destination);
         } catch (IllegalMoveException e) {
-            System.out.println("-------------\nIllegal move:\n-------------");
             System.out.println(e.getMessage());
-            System.out.println("-------------");
-            return;
+            getMove();
+        }
+        handleRepetition(moveHistory.peek());
+    }
+    
+    private Position decodePosition(String str) {
+        int row = Character.getNumericValue(str.charAt(1)) - 1;
+        int col = str.charAt(0) - 97;
+        return new Position(row, col);
+    }
+    
+    public void movePiece(Position position, Position destination) throws IllegalMoveException {
+        Move newMove;
+        Board newBoard;
+        try {
+            newMove = moveFactory.create(position, destination, isWhiteTurn, getPromotionType(position, destination), currentBoard);
+            newBoard = boardFactory.create(currentBoard, newMove);
+        } catch (IllegalMoveException e) {
+            throw new IllegalMoveException("\nIllegal move:\n" + e.getMessage());
         }
         
         isWhiteTurn = !isWhiteTurn;
-        boardHistory.push(board.getBoardCopy());
-        moveHistory.push(currentMove);
-        
-        switch (currentMove.checkType()) {
-            case CHECK -> {
-                if (isWhiteTurn) {
-                } // Alert black they are in check
-                else {
-                } // Alert white they are in check
-            }
-            case CHECKMATE -> {
-                if (isWhiteTurn) whiteVictory();
-                else blackVictory();
-                return;
-            }
-            case STALEMATE -> {
-                endGameInDraw();
-                return;
-            }
+        boardHistory.push(currentBoard);
+        moveHistory.push(newMove);
+        this.currentBoard = newBoard;
+    }
+    
+    private Move.PromotionType getPromotionType(Position position, Position destination) {
+        if (!(currentBoard.getPiece(position) instanceof Pawn) || (destination.row() != 7 && destination.row() != 0)) {
+            return Move.PromotionType.NONE;
         }
-        
-        
-        if (currentMove.capturedPiece() == null || !(currentMove.movedPiece() instanceof Pawn)) {
+        Scanner reader = new Scanner(System.in);
+        System.out.println("Enter a piece (Queen, Rook, Bishop, Knight)");
+        return switch (reader.next()) {
+            case "Rook" -> Move.PromotionType.ROOK;
+            case "Bishop" -> Move.PromotionType.BISHOP;
+            case "Knight" -> Move.PromotionType.KNIGHT;
+            default -> Move.PromotionType.QUEEN;
+        };
+    }
+    
+    private void handleRepetition(Move move) {
+        if (move.capturedPiece() == null || !(move.movedPiece() instanceof Pawn)) {
             fiftyMoveRuleCounter++;
         }
         
-        if (currentMove.movedPiece() instanceof Pawn) {
-            if (currentMove.moveType() == Move.MoveType.PROMOTION) {
-                if (isWhiteTurn) {
-                    // Prompt white for promotion type
-                } else {
-                    // Prompt black for promotion type
-                }
-            }
+        if (move.movedPiece() instanceof Pawn) {
             fiftyMoveRuleCounter = 0;
         }
-        
         
         if (fiftyMoveRuleCounter == 100 || isThreefoldRepetition()) {
             endGameInDraw();
@@ -92,10 +110,13 @@ public class Game {
         if (moveHistory.size() < 6) {
             return false;
         }
-        ChessPiece[][] currentBoard = boardHistory.peek();
+        int currentPieceCount = totalPieceCount(currentBoard);
         int count = 0;
-        for (ChessPiece[][] boardState : boardHistory) {
-            if (Arrays.deepEquals(boardState, currentBoard)) {
+        for (Board board : boardHistory) {
+            if (totalPieceCount(board) != currentPieceCount) {
+                return false;
+            }
+            if (currentBoard.equals(board)) {
                 count++;
             }
             if (count >= 3) {
@@ -105,16 +126,29 @@ public class Game {
         return false;
     }
     
+    private int totalPieceCount(Board board) {
+        return board.getPieces(true).size() + board.getPieces(false).size();
+    }
+    
     private void whiteVictory() {
         System.out.println("White wins");
+        this.gameOver = true;
     }
     
     private void blackVictory() {
         System.out.println("Black wins");
+        this.gameOver = true;
     }
     
     private void endGameInDraw() {
         System.out.println("The game ends in a draw");
+        this.gameOver = true;
+    }
+    
+    public static void main(String[] args) {
+        Game game = new Game(10);
     }
     
 }
+
+
