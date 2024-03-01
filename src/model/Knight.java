@@ -3,6 +3,7 @@ package model;
 import util.Move;
 import util.Position;
 
+import java.util.ArrayList;
 import java.util.List;
 
 public class Knight extends ChessPiece {
@@ -20,11 +21,16 @@ public class Knight extends ChessPiece {
     
     @Override
     public List<Position> possibleMoves() {
-        return null;
+        List<Position> moves = new ArrayList<>();
+        for (int i = 0; i < 8; i++) {
+            for (int j = 0; j < 8; j++) {
+                Position destination = new Position(i, j);
+                if (canMove(destination)) {
+                    moves.add(destination);
+                }
+            }
+        }
+        return moves;
     }
     
-    @Override
-    public String toString() {
-        return "N" + (isWhite ? "w" : "b");
-    }
 }

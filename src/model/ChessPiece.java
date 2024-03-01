@@ -33,4 +33,9 @@ public abstract class ChessPiece {
     public abstract boolean canMove(Position destination);
     
     public abstract List<Position> possibleMoves();
+    
+    @Override
+    public String toString() {
+        return (isWhite ? "W" : "B") + this.getClass().getSimpleName().charAt(0) + position;
+    }
 }

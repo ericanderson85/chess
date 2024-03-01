@@ -91,7 +91,7 @@ public class Board {
         for (int i = 7; i >= 0; i--) {
             boardString.append(i + 1).append("   ");
             for (int j = 0; j < 8; j++) {
-                boardString.append(board[i][j] == null ? "    " : " " + board[i][j].toString() + " ");
+                boardString.append(board[i][j] == null ? "      " : " " + board[i][j].toString() + " ");
             }
             boardString.append('\n');
         }

@@ -13,7 +13,6 @@ public record Move(Position position, ChessPiece movedPiece, Position destinatio
     // To do : Chess annotation of move
     @Override
     public String toString() {
-        StringBuilder str = new StringBuilder();
-        return str.toString();
+        return movedPiece.toString() + " --> " + destination;
     }
 }

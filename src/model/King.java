@@ -61,11 +61,6 @@ public class King extends ChessPiece {
                 new Position(position.row() - 1, position.col() + 1),
                 new Position(position.row() - 1, position.col()),
                 new Position(position.row() - 1, position.col() - 1)
-                );
-    }
-    
-    @Override
-    public String toString() {
-        return "K" + (isWhite ? "w" : "b");
+        );
     }
 }

@@ -3,13 +3,13 @@ package controller;
 import util.*;
 import model.*;
 
-import java.util.Scanner;
-import java.util.Stack;
+import java.lang.reflect.Array;
+import java.sql.SQLOutput;
+import java.util.*;
 
 public class Game {
     private Board currentBoard;
     private final Stack<Board> boardHistory;
-    private final Stack<Move> moveHistory;
     private boolean isWhiteTurn;
     private int fiftyMoveRuleCounter;
     private int whiteSecondsLeft;
@@ -24,7 +24,7 @@ public class Game {
         this.boardFactory = new BoardFactory();
         this.currentBoard = boardFactory.create();
         this.boardHistory = new Stack<>();
-        this.moveHistory = new Stack<>();
+        this.boardHistory.push(currentBoard);
         this.isWhiteTurn = true;
         this.fiftyMoveRuleCounter = 0;
         this.whiteSecondsLeft = initialClock;
@@ -40,6 +40,11 @@ public class Game {
     }
     
     private void getMove() {
+        if (isWhiteTurn) {
+            playerMove(getPossibleBoards().poll());
+            return;
+        }
+        getPossibleBoards();
         System.out.println((isWhiteTurn ? "White's" : "Black's") + " move");
         System.out.println(currentBoard);
         Scanner reader = new Scanner(System.in);
@@ -47,13 +52,15 @@ public class Game {
         Position position = decodePosition(reader.next());
         System.out.println("Enter destination:");
         Position destination = decodePosition(reader.next());
+        Pair<Board, Move> movePair;
         try {
-            movePiece(position, destination);
+            movePair = movePiece(position, destination);
         } catch (IllegalMoveException e) {
             System.out.println(e.getMessage());
             getMove();
+            return;
         }
-        handleRepetition(moveHistory.peek());
+        playerMove(movePair);
     }
     
     private Position decodePosition(String str) {
@@ -62,20 +69,17 @@ public class Game {
         return new Position(row, col);
     }
     
-    public void movePiece(Position position, Position destination) throws IllegalMoveException {
+    public Pair<Board, Move> movePiece(Position position, Position destination) throws IllegalMoveException {
         Move newMove;
         Board newBoard;
         try {
-            newMove = moveFactory.create(position, destination, isWhiteTurn, getPromotionType(position, destination), currentBoard);
+            newMove = moveFactory.create(position, destination, isWhiteTurn, Move.PromotionType.QUEEN, currentBoard);
             newBoard = boardFactory.create(currentBoard, newMove);
         } catch (IllegalMoveException e) {
             throw new IllegalMoveException("\nIllegal move:\n" + e.getMessage());
         }
         
-        isWhiteTurn = !isWhiteTurn;
-        boardHistory.push(currentBoard);
-        moveHistory.push(newMove);
-        this.currentBoard = newBoard;
+        return new Pair<>(newBoard, newMove);
     }
     
     private Move.PromotionType getPromotionType(Position position, Position destination) {
@@ -107,7 +111,7 @@ public class Game {
     }
     
     private boolean isThreefoldRepetition() {
-        if (moveHistory.size() < 6) {
+        if (boardHistory.size() < 6) {
             return false;
         }
         int currentPieceCount = totalPieceCount(currentBoard);
@@ -144,6 +148,30 @@ public class Game {
         System.out.println("The game ends in a draw");
         this.gameOver = true;
     }
+    
+    private Queue<Pair<Board, Move>> getPossibleBoards() {
+        Queue<Pair<Board, Move>> boards = new PriorityQueue<>(Comparator.comparingInt((Pair<Board, Move> b) -> b.getKey().getScore()).reversed());
+        Collection<ChessPiece> pieces = currentBoard.getPieces(true).values();
+        for (ChessPiece piece : pieces) {
+            for (Position destination : piece.possibleMoves()) {
+                try {
+                    boards.offer(movePiece(piece.getPosition(), destination));
+                } catch (IllegalMoveException ignored) {
+                }
+            }
+        }
+        System.out.println(boards);
+        return boards;
+    }
+    
+    private void playerMove(Pair<Board, Move> movePair) {
+        movePair.getValue().movedPiece().setPosition(movePair.getValue().destination());
+        handleRepetition(movePair.getValue());
+        isWhiteTurn = !isWhiteTurn;
+        boardHistory.push(currentBoard);
+        this.currentBoard = movePair.getKey();
+    }
+    
     
     public static void main(String[] args) {
         Game game = new Game(10);

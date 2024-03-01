@@ -66,11 +66,17 @@ public class MoveFactory {
         if (isOutOfBounds(destination) || isOutOfBounds(position)) {
             throw new IllegalMoveException("Out of bounds");
         }
+        if (destination.equals(position)) {
+            throw new IllegalMoveException("Can't move 0 tiles");
+        }
         if (position.equals(destination) || !thisPiece.canMove(destination)) {
             throw new IllegalMoveException("Illegal move for type " + thisPiece.getClass().toString());
         }
-        if (thisPiece instanceof Pawn && destination.col() == position.col() && board.getPiece(destination) != null) {
-            throw new IllegalMoveException("Illegal move for type Pawn");
+        if (thisPiece instanceof Pawn) {
+        if ((destination.col() == position.col() && board.getPiece(destination) != null)
+                || (destination.col() != position.col() && board.getPiece(destination) == null)){
+                throw new IllegalMoveException("Illegal move for type Pawn");
+            }
         }
         if (!board.canSee(thisPiece, position, destination)) {
             throw new IllegalMoveException(thisPiece.getClass().toString() + "can't jump over tiles");

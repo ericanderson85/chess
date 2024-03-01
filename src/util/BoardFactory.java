@@ -234,7 +234,6 @@ public class BoardFactory {
         board[position.row()][position.col()] = piece;
         if (piece != null) {
             pieces.put(position, piece);
-            piece.setPosition(position);
         }
     }
     
