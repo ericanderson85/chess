@@ -2,15 +2,24 @@ package model;
 
 import util.Position;
 
+import java.util.ArrayList;
 import java.util.List;
 
 public class King extends ChessPiece {
-    private boolean hasMoved;
-    private boolean inCheck;
+    private final boolean hasMoved;
     public King(Position position, boolean isWhite) {
-        super(position, isWhite, 1);
+        super(position, isWhite, 20000, PieceType.KING);
         this.hasMoved = false;
-        this.inCheck = false;
+    }
+    
+    public King(Position position, boolean isWhite, boolean hasMoved) {
+        super(position, isWhite, 9, PieceType.KING);
+        this.hasMoved = hasMoved;
+    }
+    
+    @Override
+    public ChessPiece copyTo(Position newPosition) {
+        return new King(newPosition, this.isWhite, true);
     }
     
     @Override
@@ -46,21 +55,20 @@ public class King extends ChessPiece {
         return hasMoved;
     }
     
-    public void setMoved() {
-        this.hasMoved = true;
-    }
-    
     @Override
     public List<Position> possibleMoves() {
-        return List.of(
-                new Position(position.row() + 1, position.col() + 1),
-                new Position(position.row() + 1, position.col()),
-                new Position(position.row() + 1, position.col() - 1),
-                new Position(position.row(), position.col() + 1),
-                new Position(position.row(), position.col() - 1),
-                new Position(position.row() - 1, position.col() + 1),
-                new Position(position.row() - 1, position.col()),
-                new Position(position.row() - 1, position.col() - 1)
-        );
+        List<Position> list = new ArrayList<>();
+        int[][] directions = {
+                {1, 1}, {1, 0}, {1, -1},
+                {0, 1}, {0, -1},
+                {-1, 1}, {-1, 0}, {-1, -1}
+        };
+        for (int[] direction : directions) {
+            Position destination = new Position(position.row() + direction[0], position.col() + direction[1]);
+            if (!Board.isOutOfBounds(destination)) {
+                list.add(destination);
+            }
+        }
+        return list;
     }
 }

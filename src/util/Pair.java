@@ -18,6 +18,6 @@ public class Pair<K, V> {
     
     @Override
     public String toString() {
-        return value.toString();
+        return value.toString() + "\n" + key.toString();
     }
 }

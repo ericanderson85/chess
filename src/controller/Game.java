@@ -3,7 +3,6 @@ package controller;
 import util.*;
 import model.*;
 
-import java.lang.reflect.Array;
 import java.sql.SQLOutput;
 import java.util.*;
 
@@ -14,21 +13,21 @@ public class Game {
     private int fiftyMoveRuleCounter;
     private int whiteSecondsLeft;
     private int blackSecondsLeft;
-    private final MoveFactory moveFactory;
-    private final BoardFactory boardFactory;
+    private ChessPlayer blackPlayer;
+    private ChessPlayer whitePlayer;
     private boolean gameOver;
     
     
-    public Game(int initialClock) {
-        this.moveFactory = new MoveFactory();
-        this.boardFactory = new BoardFactory();
-        this.currentBoard = boardFactory.create();
+    public Game(int initialClock, ChessPlayer whitePlayer, ChessPlayer blackPlayer) {
+        this.whiteSecondsLeft = initialClock;
+        this.blackSecondsLeft = initialClock;
+        this.whitePlayer = whitePlayer;
+        this.blackPlayer = blackPlayer;
+        this.currentBoard = BoardValidator.createNewBoard();
         this.boardHistory = new Stack<>();
         this.boardHistory.push(currentBoard);
         this.isWhiteTurn = true;
         this.fiftyMoveRuleCounter = 0;
-        this.whiteSecondsLeft = initialClock;
-        this.blackSecondsLeft = initialClock;
         this.gameOver = false;
         startGame();
     }
@@ -40,60 +39,22 @@ public class Game {
     }
     
     private void getMove() {
-        if (isWhiteTurn) {
-            playerMove(getPossibleBoards().poll());
-            return;
-        }
-        getPossibleBoards();
-        System.out.println((isWhiteTurn ? "White's" : "Black's") + " move");
-        System.out.println(currentBoard);
-        Scanner reader = new Scanner(System.in);
-        System.out.println("Enter square to move:");
-        Position position = decodePosition(reader.next());
-        System.out.println("Enter destination:");
-        Position destination = decodePosition(reader.next());
         Pair<Board, Move> movePair;
-        try {
-            movePair = movePiece(position, destination);
-        } catch (IllegalMoveException e) {
-            System.out.println(e.getMessage());
-            getMove();
-            return;
+        if (isWhiteTurn) {
+            movePair = whitePlayer.movePiece(currentBoard);
+        } else {
+            movePair = blackPlayer.movePiece(currentBoard);
         }
         playerMove(movePair);
     }
     
-    private Position decodePosition(String str) {
-        int row = Character.getNumericValue(str.charAt(1)) - 1;
-        int col = str.charAt(0) - 97;
-        return new Position(row, col);
-    }
-    
-    public Pair<Board, Move> movePiece(Position position, Position destination) throws IllegalMoveException {
-        Move newMove;
-        Board newBoard;
-        try {
-            newMove = moveFactory.create(position, destination, isWhiteTurn, Move.PromotionType.QUEEN, currentBoard);
-            newBoard = boardFactory.create(currentBoard, newMove);
-        } catch (IllegalMoveException e) {
-            throw new IllegalMoveException("\nIllegal move:\n" + e.getMessage());
-        }
-        
-        return new Pair<>(newBoard, newMove);
-    }
-    
-    private Move.PromotionType getPromotionType(Position position, Position destination) {
-        if (!(currentBoard.getPiece(position) instanceof Pawn) || (destination.row() != 7 && destination.row() != 0)) {
-            return Move.PromotionType.NONE;
-        }
-        Scanner reader = new Scanner(System.in);
-        System.out.println("Enter a piece (Queen, Rook, Bishop, Knight)");
-        return switch (reader.next()) {
-            case "Rook" -> Move.PromotionType.ROOK;
-            case "Bishop" -> Move.PromotionType.BISHOP;
-            case "Knight" -> Move.PromotionType.KNIGHT;
-            default -> Move.PromotionType.QUEEN;
-        };
+    private void playerMove(Pair<Board, Move> movePair) {
+        handleRepetition(movePair.getValue());
+        isWhiteTurn = !isWhiteTurn;
+        boardHistory.push(currentBoard);
+        this.currentBoard = movePair.getKey();
+        System.out.println(movePair);
+        System.out.println("Evaluation: " + Evaluate.evaluate(movePair.getKey(), isWhiteTurn));
     }
     
     private void handleRepetition(Move move) {
@@ -149,32 +110,11 @@ public class Game {
         this.gameOver = true;
     }
     
-    private Queue<Pair<Board, Move>> getPossibleBoards() {
-        Queue<Pair<Board, Move>> boards = new PriorityQueue<>(Comparator.comparingInt((Pair<Board, Move> b) -> b.getKey().getScore()).reversed());
-        Collection<ChessPiece> pieces = currentBoard.getPieces(true).values();
-        for (ChessPiece piece : pieces) {
-            for (Position destination : piece.possibleMoves()) {
-                try {
-                    boards.offer(movePiece(piece.getPosition(), destination));
-                } catch (IllegalMoveException ignored) {
-                }
-            }
-        }
-        System.out.println(boards);
-        return boards;
-    }
-    
-    private void playerMove(Pair<Board, Move> movePair) {
-        movePair.getValue().movedPiece().setPosition(movePair.getValue().destination());
-        handleRepetition(movePair.getValue());
-        isWhiteTurn = !isWhiteTurn;
-        boardHistory.push(currentBoard);
-        this.currentBoard = movePair.getKey();
-    }
+
     
     
     public static void main(String[] args) {
-        Game game = new Game(10);
+        new Game(10, new Bot(true), new Bot(false));
     }
     
 }

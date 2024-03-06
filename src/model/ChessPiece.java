@@ -1,33 +1,35 @@
 package model;
 
-import util.Move;
 import util.Position;
 
 import java.util.List;
 
 public abstract class ChessPiece {
-    protected Position position;
+    protected final Position position;
     protected final boolean isWhite;
     protected final int value;
+    protected final PieceType pieceType;
     
-    protected ChessPiece(Position position, boolean isWhite, int value) {
+    protected ChessPiece(Position position, boolean isWhite, int value, PieceType pieceType) {
         this.position = position;
         this.isWhite = isWhite;
         this.value = value;
+        this.pieceType = pieceType;
     }
+    
+    public abstract ChessPiece copyTo (Position newPosition);
     
     public Position getPosition() {
         return position;
-    }
-    
-    public void setPosition(Position position) {
-        this.position = position;
     }
     public boolean isWhite() {
         return isWhite;
     }
     public int getValue() {
         return value;
+    }
+    public PieceType getType() {
+        return pieceType;
     }
     
     public abstract boolean canMove(Position destination);
@@ -36,6 +38,23 @@ public abstract class ChessPiece {
     
     @Override
     public String toString() {
-        return (isWhite ? "W" : "B") + this.getClass().getSimpleName().charAt(0) + position;
+        return pad((isWhite ? "W" : "B") + this.getClass().getSimpleName(), 7);
+    }
+    
+    public static String pad(String inputString, int length) {
+        if (inputString.length() >= length) {
+            return inputString;
+        }
+        StringBuilder sb = new StringBuilder();
+        while (sb.length() < length - inputString.length()) {
+            sb.append(' ');
+        }
+        sb.append(inputString);
+        
+        return sb.toString();
+    }
+    
+    public enum PieceType {
+        PAWN, KNIGHT, BISHOP, ROOK, QUEEN, KING
     }
 }

@@ -1,6 +1,5 @@
 package model;
 
-import util.Move;
 import util.Position;
 
 import java.util.ArrayList;
@@ -8,7 +7,12 @@ import java.util.List;
 
 public class Pawn extends ChessPiece {
     public Pawn(Position position, boolean isWhite) {
-        super(position, isWhite, 1);
+        super(position, isWhite, 100, PieceType.PAWN);
+    }
+    
+    @Override
+    public ChessPiece copyTo(Position newPosition) {
+        return new Pawn(newPosition, this.isWhite);
     }
     
     @Override
@@ -52,16 +56,30 @@ public class Pawn extends ChessPiece {
     
     @Override
     public List<Position> possibleMoves() {
-        List<Position> moves = new ArrayList<>();
-        for (int i = 0; i < 8; i++) {
-            for (int j = 0; j < 8; j++) {
-                Position destination = new Position(i, j);
-                if (canMove(destination)) {
-                    moves.add(destination);
-                }
+        List<Position> possibleMoves = new ArrayList<>();
+        
+        int direction = isWhite ? 1 : -1;
+        
+        Position forward = new Position(position.row() + direction, position.col());
+        possibleMoves.add(forward);
+        
+        if ((isWhite && position.row() == 1) || (!isWhite && position.row() == 6)) {
+            Position initialTwoSquareMove = new Position(position.row() + 2 * direction, position.col());
+            possibleMoves.add(initialTwoSquareMove);
+        }
+        
+        Position captureLeft = new Position(position.row() + direction, position.col() - 1);
+        Position captureRight = new Position(position.row() + direction, position.col() + 1);
+        possibleMoves.add(captureLeft);
+        possibleMoves.add(captureRight);
+    
+        for (int i = possibleMoves.size() - 1; i >= 0; i--) {
+            if (Board.isOutOfBounds(possibleMoves.get(i))) {
+                possibleMoves.remove(i);
             }
         }
-        return moves;
+        
+        return possibleMoves;
     }
     
 }

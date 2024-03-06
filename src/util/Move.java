@@ -10,9 +10,11 @@ public record Move(Position position, ChessPiece movedPiece, Position destinatio
         NONE, QUEEN, ROOK, KNIGHT, BISHOP
     }
     
-    // To do : Chess annotation of move
     @Override
     public String toString() {
-        return movedPiece.toString() + " --> " + destination;
+        if (capturedPiece != null) {
+            return movedPiece.toString() + "  --X-->  " + capturedPiece;
+        }
+        return movedPiece.toString() + "  ----->  " + destination.toString();
     }
 }

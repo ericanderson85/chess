@@ -1,6 +1,5 @@
 package model;
 
-import util.Move;
 import util.Position;
 
 import java.util.ArrayList;
@@ -9,7 +8,12 @@ import java.util.List;
 public class Knight extends ChessPiece {
     
     public Knight(Position position, boolean isWhite) {
-        super(position, isWhite, 3);
+        super(position, isWhite, 320, PieceType.KNIGHT);
+    }
+    
+    @Override
+    public Knight copyTo(Position newPosition) {
+        return new Knight(newPosition, this.isWhite);
     }
     
     @Override
@@ -21,16 +25,20 @@ public class Knight extends ChessPiece {
     
     @Override
     public List<Position> possibleMoves() {
-        List<Position> moves = new ArrayList<>();
-        for (int i = 0; i < 8; i++) {
-            for (int j = 0; j < 8; j++) {
-                Position destination = new Position(i, j);
-                if (canMove(destination)) {
-                    moves.add(destination);
-                }
+        int[][] moves = {
+                {-2, -1}, {-1, -2}, {1, -2}, {2, -1},
+                {2, 1}, {1, 2}, {-1, 2}, {-2, 1}
+        };
+    
+        List<Position> possibleMoves = new ArrayList<>();
+        for (int[] move : moves) {
+            Position destination = new Position(position.row() + move[0], position.col() + move[1]);
+            if (!Board.isOutOfBounds(destination)) {
+                possibleMoves.add(destination);
             }
         }
-        return moves;
+    
+        return possibleMoves;
     }
     
 }

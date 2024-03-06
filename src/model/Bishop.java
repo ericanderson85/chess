@@ -1,6 +1,5 @@
 package model;
 
-import util.Move;
 import util.Position;
 
 import java.util.ArrayList;
@@ -8,7 +7,12 @@ import java.util.List;
 
 public class Bishop extends ChessPiece {
     public Bishop(Position position, boolean isWhite) {
-        super(position, isWhite, 3);
+        super(position, isWhite, 330, PieceType.KING);
+    }
+    
+    @Override
+    public ChessPiece copyTo(Position newPosition) {
+        return new Bishop(newPosition, this.isWhite);
     }
     
     @Override
@@ -21,12 +25,15 @@ public class Bishop extends ChessPiece {
     @Override
     public List<Position> possibleMoves() {
         List<Position> moves = new ArrayList<>();
-        for (int i = 0; i < 8; i++) {
-            for (int j = 0; j < 8; j++) {
-                Position destination = new Position(i, j);
-                if (canMove(destination)) {
-                    moves.add(destination);
-                }
+        int[][] directions = {
+                {-1, -1}, {-1, 1}, {1, -1}, {1, 1}
+        };
+        int row = position.row();
+        int col = position.col();
+        for (int[] direction : directions) {
+            for (int i = row + direction[0], j = col + direction[1]; i < 8 && i >= 0 && j < 8 && j >= 0;
+                 i += direction[0], j += direction[1]) {
+                moves.add(new Position(i, j));
             }
         }
         return moves;
